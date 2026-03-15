@@ -4,7 +4,8 @@ public class FirstPersonController : MonoBehaviour
 {
 
     private CharacterController characterController;
-    public float walkSpeed = 25;
+    public float walkSpeed = 5;
+    public float sprintSpeedAdd;
     public float mouseSensitivity = 2;
     float verticalRotation;
     float upDownRange = 80;
@@ -32,8 +33,17 @@ public class FirstPersonController : MonoBehaviour
         
         float verInput = Input.GetAxis("Vertical");
         float horInput = Input.GetAxis("Horizontal");
-        float verSpeed = verInput * walkSpeed;
-        float horSpeed = horInput * walkSpeed;
+        float verSpeed = verInput * (walkSpeed + sprintSpeedAdd);
+        float horSpeed = horInput * (walkSpeed + sprintSpeedAdd);
+
+           if (Input.GetKey(KeyCode.LeftShift))
+        {
+            sprintSpeedAdd = 20;
+        }
+        else
+        {
+            sprintSpeedAdd = 0;
+        }
 
         Vector3 horizontalMovement = new Vector3(horSpeed, 0, verSpeed);
         horizontalMovement = transform.rotation * horizontalMovement;
