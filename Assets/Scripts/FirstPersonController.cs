@@ -10,6 +10,22 @@ public class FirstPersonController : MonoBehaviour
     float verticalRotation;
     float upDownRange = 80;
 
+    public float jumpForce = 5;
+    private Vector3 currentMovement;
+    private float gravity = 9.81f;
+    private Vector3 hitPoint;
+    public ParticleSystem impactPS;
+    [Range(1, 50)]public int particleCount = 20;
+
+    public float pickUpRange = 2;
+    public Transform holdPoint;
+
+    public float throwForce = 5;
+    private ItemScript heldItem = null;
+
+    public GameObject platform;
+
+
     private Camera cam;
 
     void Start()
@@ -25,6 +41,42 @@ public class FirstPersonController : MonoBehaviour
 
         Movement();
         MouseLook();
+        Jumping();
+
+        if(heldItem != null)
+        {
+            if (Input.GetMouseButtonDown(1))
+            {
+                heldItem.Throw(throwForce, cam.transform.forward);
+                heldItem = null;
+            }
+        }
+
+        if(ObjectInFocus() != null)
+        {
+            float distanceToObject = Vector3.Distance(cam.transform.position, ObjectInFocus().transform.position);
+            if (Input.GetMouseButtonDown(0))
+            {
+                impactPS.transform.position = hitPoint;
+                impactPS.Emit(particleCount);
+
+                if (ObjectInFocus() != platform)
+                {
+                    Destroy(ObjectInFocus());
+                }
+
+
+            }
+
+            if(distanceToObject <= pickUpRange && ObjectInFocus().GetComponent<ItemScript>() != null)
+            {
+                if (Input.GetMouseButtonDown(1))
+                {
+                    heldItem = ObjectInFocus().GetComponent<ItemScript>();
+                    heldItem.PickUp(cam.transform, holdPoint.position);    
+                }   
+            }
+        }
 
     }
 
@@ -48,7 +100,9 @@ public class FirstPersonController : MonoBehaviour
         Vector3 horizontalMovement = new Vector3(horSpeed, 0, verSpeed);
         horizontalMovement = transform.rotation * horizontalMovement;
 
-        characterController.Move(horizontalMovement * Time.deltaTime);
+        currentMovement.x = horizontalMovement.x;
+        currentMovement.z = horizontalMovement.z;
+        characterController.Move(currentMovement * Time.deltaTime);
 
         
 
@@ -65,5 +119,38 @@ public class FirstPersonController : MonoBehaviour
         //local rotation rotates object in relation to the parent
         
 
+    }
+
+    void Jumping()
+    {
+        if (characterController.isGrounded)
+        {
+            if (Input.GetKeyDown(KeyCode.Space))
+            {
+                currentMovement.y = jumpForce;
+            }
+            
+        }
+        else
+        {
+            currentMovement.y -= gravity * Time.deltaTime;
+        }
+    }
+
+
+    public GameObject ObjectInFocus()
+    {
+
+        GameObject result = null;
+        RaycastHit hit;
+
+        if(Physics.Raycast(cam.transform.position, cam.transform.forward, out hit))
+        {
+            result = hit.transform.gameObject;
+            hitPoint = hit.point;
+        }
+
+
+        return result;
     }
 }
