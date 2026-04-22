@@ -6,6 +6,8 @@ public class EnemyController : MonoBehaviour
     public Transform player;
     private Vector3 targetPoint;
     private Vector3 directionToPlayer;
+    public float turnTimer;
+    private float turnTimerMax = 3;
 
     public float rotationSpeed;
 
@@ -15,6 +17,11 @@ public class EnemyController : MonoBehaviour
     float walkSpeed = 1;
 
     public LayerMask playerLayer;
+
+    public Transform turn;
+    private Vector3 turnPoint;
+    private Vector3 directionToTurn;
+
     
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -31,14 +38,27 @@ public class EnemyController : MonoBehaviour
         directionToPlayer = (targetPoint - transform.position).normalized;
         Quaternion rot = Quaternion.LookRotation(directionToPlayer);
 
-        
+        turnPoint = new Vector3(turn.localPosition.x, transform.localPosition.y, turn.localPosition.z);
+        directionToTurn = (turnPoint - transform.localPosition).normalized;
+        Quaternion rotTurn = Quaternion.LookRotation(directionToTurn);
         
         if (PlayerDetected())
         {
+            turnTimer = 0;
             transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rot, rotationSpeed * Time.deltaTime);
         }
 
         controller.Move(transform.forward * walkSpeed * Time.deltaTime);
+
+        if (!PlayerDetected())
+        {
+            turnTimer += Time.deltaTime;
+            if (turnTimer >= turnTimerMax)
+            {
+                transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotTurn, rotationSpeed * 360 * Time.deltaTime);
+                turnTimer = 0;
+            }
+        }
 
     }
 
