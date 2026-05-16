@@ -2,66 +2,151 @@ using UnityEngine;
 
 public class EnemyController : MonoBehaviour
 {
-    private CharacterController controller;
+    //private CharacterController controller;
     public Transform player;
-    private Vector3 targetPoint;
+    //private Vector3 targetPoint;
     private Vector3 directionToPlayer;
     public float turnTimer;
     private float turnTimerMax = 3;
 
-    public float rotationSpeed;
+    //public float rotationSpeed;
 
     public float viewAngle = 120;
     public float viewRange = 5;
     public float detectionRadius = 2;
-    float walkSpeed = 1;
+    //float walkSpeed = 1;
 
     public LayerMask playerLayer;
 
     public Transform turn;
     private Vector3 turnPoint;
     private Vector3 directionToTurn;
+    private Vector3 lastKnownPosition;
+
+    private UnityEngine.AI.NavMeshAgent agent;
+
+    private bool patrolling = true;
+    private bool playerFound = false;
+    public float alertDuration = 5;
+    private float timeSinceAlerted = 0;
+
+    public Transform [] waypoints;
+    private Transform targetWaypoint;
+    private int waypointIndex = 0;
+
+    private float waitingTimer;
+    public float maxWaitingTime;
+    private bool isWaiting;
+
+    public Animator anim;
+
 
     
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        controller = GetComponent<CharacterController>();
+        //controller = GetComponent<CharacterController>();
+        agent = GetComponent<UnityEngine.AI.NavMeshAgent>();
+
+        SetNextTargetWaypoint(true);
+        anim = GetComponent<Animator>();
+    }
+
+    private void SetNextTargetWaypoint(bool firstTime = false)
+    {
+        if (!firstTime)
+        {
+            waypointIndex++;
+        }
+        if (waypointIndex >= waypoints.Length)
+        {
+            waypointIndex = 0;
+        }
+
+        targetWaypoint = waypoints[waypointIndex];
+        agent.SetDestination(targetWaypoint.position);
     }
 
     // Update is called once per frame
     void Update()
     {
-        Debug.DrawRay(transform.position, transform.forward * 10, Color.red);
-        targetPoint = new Vector3(player.position.x, transform.position.y, player.position.z);
-        directionToPlayer = (targetPoint - transform.position).normalized;
+        directionToPlayer = (player.position - transform.position).normalized;
         Quaternion rot = Quaternion.LookRotation(directionToPlayer);
-
-        turnPoint = new Vector3(turn.localPosition.x, transform.localPosition.y, turn.localPosition.z);
-        directionToTurn = (turnPoint - transform.localPosition).normalized;
-        Quaternion rotTurn = Quaternion.LookRotation(directionToTurn);
+        anim.SetFloat("Velocity", agent.desiredVelocity.magnitude);
         
+
+      
         if (PlayerDetected())
         {
-            turnTimer = 0;
-            transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rot, rotationSpeed * Time.deltaTime);
+            playerFound = true;
+            patrolling = false;
+            timeSinceAlerted = 0;
+            waitingTimer  = 0;
+            isWaiting = false;
+            lastKnownPosition = player.position;
+            agent.SetDestination(lastKnownPosition);
+
+
+            //turnTimer = 0;
+            //transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rot, agent.angularSpeed * Time.deltaTime);
         }
 
-        controller.Move(transform.forward * walkSpeed * Time.deltaTime);
-
-        if (!PlayerDetected())
+        if (playerFound)
         {
-            turnTimer += Time.deltaTime;
-            if (turnTimer >= turnTimerMax)
+            if(timeSinceAlerted < alertDuration)
             {
-                transform.localRotation = Quaternion.RotateTowards(transform.localRotation, rotTurn, rotationSpeed * 360 * Time.deltaTime);
-                turnTimer = 0;
+                timeSinceAlerted += Time.deltaTime;
             }
+            else
+            {
+                playerFound = false;
+                timeSinceAlerted = 0;
+                patrolling = true;
+                SetNextTargetWaypoint(true);
+                
+            }
+
         }
+/*
+        if (patrolling)
+        {
+            Patrolling();
+        }
+ */
 
     }
 
+    private void Patrolling()
+    {
+
+
+        float dist = Vector3.Distance(transform.position, targetWaypoint.position);
+        float buffer = 0.5f;
+
+        if (dist < buffer && !isWaiting)
+        {
+            isWaiting = true;
+
+        }
+
+        if (isWaiting)
+        {
+        if (waitingTimer < maxWaitingTime)
+        {
+            waitingTimer += Time.deltaTime;
+
+        }
+        else
+        {
+            SetNextTargetWaypoint();
+            waitingTimer = 0;
+            isWaiting = false;
+
+        }
+        }
+
+    }
 
     private bool PlayerDetected()
     {
